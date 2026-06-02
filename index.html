@@ -957,7 +957,7 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
   </div>
 
   <div class="admin-savebar">
-    <div class="admin-savebar-info">Auto-saves to this browser · <strong>click Save</strong> to confirm</div>
+    <div class="admin-savebar-info">Auto-publishes to live site · all visitors see updates</div>
     <div class="admin-savebar-actions">
       <button class="btn-secondary" id="adminReset">Reset</button>
       <button class="btn-secondary" id="adminLogout">Sign Out</button>
@@ -975,20 +975,53 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
 
 // Default password used the FIRST time anyone logs in.
 // After login, admins can change it from the Settings tab — the new
-// password is hashed and saved in localStorage. To recover from a lost
-// password, clear the browser's site data or edit DEFAULT_PASSWORD.
+// password is hashed and saved in the cloud. To reset a lost password,
+// delete the 'admin-pwd-hash' blob from Netlify dashboard.
 const DEFAULT_PASSWORD = 'mustangs2025';
 
-const STORAGE_KEY = 'mustang-vb-content';
-const ADMIN_PWD_KEY = 'mustang-vb-admin-pwd-hash';
+const API_URL = '/api/content';
+const STORAGE_KEY = 'mustang-vb-content';          // localStorage cache key
+const ADMIN_PWD_KEY = 'mustang-vb-admin-pwd-hash'; // legacy localStorage key (migrate from)
+const ADMIN_SECRET_KEY = 'mustang-vb-admin-secret'; // browser-only — remembers admin secret
 
-// ─────────── STORAGE WRAPPER (localStorage based, works on any host) ───────────
+// ─────────── LOCAL CACHE (fast load, offline fallback) ───────────
 function lsGet(key) {
   try { return localStorage.getItem(key); } catch (e) { return null; }
 }
 function lsSet(key, value) {
-  try { localStorage.setItem(key, value); return true; }
-  catch (e) { console.error('Storage save failed:', e); return false; }
+  try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+}
+
+// ─────────── CLOUD STORAGE (Netlify Blobs via /api/content) ───────────
+let adminSecret = null;
+function getAdminSecret() {
+  if (adminSecret) return adminSecret;
+  adminSecret = lsGet(ADMIN_SECRET_KEY) || null;
+  return adminSecret;
+}
+function setAdminSecretLocal(s) { adminSecret = s; lsSet(ADMIN_SECRET_KEY, s); }
+function clearAdminSecret() { adminSecret = null; try { localStorage.removeItem(ADMIN_SECRET_KEY); } catch (e) {} }
+
+async function cloudGet(which) {
+  const r = await fetch(API_URL + '?key=' + which, { method: 'GET', cache: 'no-store' });
+  if (!r.ok) throw new Error('Read failed: ' + r.status);
+  const data = await r.json();
+  if (!data.ok) throw new Error(data.error || 'Read failed');
+  return data.value; // string or null
+}
+async function cloudSet(which, value) {
+  const secret = getAdminSecret();
+  if (!secret) { const e = new Error('NO_SECRET'); e.code = 'NO_SECRET'; throw e; }
+  const r = await fetch(API_URL + '?key=' + which, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
+    body: JSON.stringify({ value })
+  });
+  if (r.status === 401) { const e = new Error('BAD_SECRET'); e.code = 'BAD_SECRET'; throw e; }
+  if (!r.ok) throw new Error('Write failed: ' + r.status);
+  const data = await r.json();
+  if (!data.ok) throw new Error(data.error || 'Write failed');
+  return true;
 }
 
 // ─────────── PASSWORD HELPERS ───────────
@@ -997,23 +1030,26 @@ async function hashPwd(pwd) {
   const buf = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
-function getStoredPwdHash() {
-  return lsGet(ADMIN_PWD_KEY);
+async function getStoredPwdHash() {
+  try { return await cloudGet('pwd'); }
+  catch (e) {
+    console.warn('Could not fetch password hash from cloud:', e.message);
+    return null;
+  }
 }
-function setStoredPwdHash(hash) {
-  return lsSet(ADMIN_PWD_KEY, hash);
+async function setStoredPwdHash(hash) {
+  return await cloudSet('pwd', hash);
 }
 async function verifyPassword(pwd) {
-  const stored = getStoredPwdHash();
+  const stored = await getStoredPwdHash();
   if (stored) {
     const h = await hashPwd(pwd);
     return h === stored;
   }
-  // No custom password set yet — accept the default
   return pwd === DEFAULT_PASSWORD;
 }
-function isUsingDefaultPassword() {
-  return getStoredPwdHash() === null;
+async function isUsingDefaultPassword() {
+  return (await getStoredPwdHash()) === null;
 }
 
 // ─────────── DEFAULT CONTENT ───────────
@@ -1093,43 +1129,68 @@ let dirty = false;
 let saveTimer = null;
 
 // ─────────── DATA LOAD / SAVE ───────────
-function loadData() {
+function applyParsed(parsed) {
+  DATA = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...parsed };
+  DATA.meta = { ...DEFAULTS.meta, ...(parsed.meta || {}) };
+  DATA.stats = { ...DEFAULTS.stats, ...(parsed.stats || {}) };
+  DATA.practiceMeta = { ...DEFAULTS.practiceMeta, ...(parsed.practiceMeta || {}) };
+  DATA.cta = { ...DEFAULTS.cta, ...(parsed.cta || {}) };
+}
+
+// Synchronous: instantly load from local cache so the page renders fast
+function loadDataFromCache() {
   const raw = lsGet(STORAGE_KEY);
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      // merge with defaults so any newly added fields still work
-      DATA = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...parsed };
-      // ensure nested objects also get default fallbacks
-      DATA.meta = { ...DEFAULTS.meta, ...(parsed.meta || {}) };
-      DATA.stats = { ...DEFAULTS.stats, ...(parsed.stats || {}) };
-      DATA.practiceMeta = { ...DEFAULTS.practiceMeta, ...(parsed.practiceMeta || {}) };
-      DATA.cta = { ...DEFAULTS.cta, ...(parsed.cta || {}) };
-    } catch (e) {
-      console.error('Failed to parse saved data, using defaults', e);
+  if (!raw) return false;
+  try { applyParsed(JSON.parse(raw)); return true; }
+  catch (e) { console.error('Bad cached data', e); return false; }
+}
+
+// Async: pull latest from cloud, update if different, re-render
+async function loadDataFromCloud() {
+  try {
+    const raw = await cloudGet('content');
+    if (raw) {
+      lsSet(STORAGE_KEY, raw); // update cache
+      try {
+        const parsed = JSON.parse(raw);
+        applyParsed(parsed);
+        renderAll();
+      } catch (e) { console.error('Bad cloud data', e); }
     }
+  } catch (e) {
+    console.warn('Cloud fetch failed, using cache/defaults:', e.message);
   }
 }
 
-function saveData() {
+async function saveData() {
   setSaveStatus('saving');
-  const ok = lsSet(STORAGE_KEY, JSON.stringify(DATA));
-  if (ok) {
+  const json = JSON.stringify(DATA);
+  // Always update local cache so admin sees their own edits even if cloud fails
+  lsSet(STORAGE_KEY, json);
+
+  try {
+    await cloudSet('content', json);
     dirty = false;
     setSaveStatus('saved');
-  } else {
-    setSaveStatus('error');
-    showToast('Save failed — your browser may be out of storage space', 'error');
+    return true;
+  } catch (e) {
+    if (e.code === 'NO_SECRET' || e.code === 'BAD_SECRET') {
+      setSaveStatus('error');
+      showToast('Admin secret required — open Settings to enter it', 'error');
+    } else {
+      setSaveStatus('error');
+      showToast('Could not save to cloud: ' + e.message, 'error');
+    }
+    return false;
   }
-  return ok;
 }
 
-// debounced save while editing (still auto-saves, but the manual "Save" button is the safety net)
+// debounced save while editing (1.5s after last keystroke)
 function markDirty() {
   dirty = true;
   setSaveStatus('dirty');
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => saveData(), 1000);
+  saveTimer = setTimeout(() => saveData(), 1500);
 }
 
 function setSaveStatus(s) {
@@ -1137,17 +1198,16 @@ function setSaveStatus(s) {
   if (!el) return;
   el.classList.remove('saved', 'saving', 'dirty', 'error');
   if (s === 'saved') { el.classList.add('saved'); el.textContent = 'Saved'; }
-  else if (s === 'saving') { el.classList.add('saving'); el.textContent = 'Saving…'; }
+  else if (s === 'saving') { el.classList.add('saving'); el.textContent = 'Publishing…'; }
   else if (s === 'dirty') { el.classList.add('dirty'); el.textContent = 'Unsaved'; }
   else if (s === 'error') { el.classList.add('dirty'); el.textContent = 'Save Error'; }
 }
 
 // Manual save (used by the big Save button)
-function manualSave() {
+async function manualSave() {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-  if (saveData()) {
-    showToast('All changes saved', 'success');
-  }
+  const ok = await saveData();
+  if (ok) showToast('All changes published — live for everyone', 'success');
 }
 
 // ─────────── ESCAPE HELPERS ───────────
@@ -1359,7 +1419,7 @@ async function tryLogin() {
       isAdmin = true;
       closeLogin();
       openAdmin();
-      if (isUsingDefaultPassword()) {
+      if (await isUsingDefaultPassword()) {
         setTimeout(() => showToast('Using default password — change it in the Settings tab', 'error'), 600);
       }
     } else {
@@ -1829,11 +1889,40 @@ function renderAdminCTA() {
 }
 
 // ─────────── ADMIN PANE: SETTINGS / PASSWORD ───────────
-function renderAdminSettings() {
+async function renderAdminSettings() {
   const pane = document.getElementById('pane-admin-settings');
-  const usingDefault = isUsingDefaultPassword();
+  const usingDefault = await isUsingDefaultPassword();
+  const hasSecret = !!getAdminSecret();
   pane.innerHTML = `
-    <div class="admin-pane-intro">Manage your password, back up your content, and adjust account settings. Content is saved in your browser — see the Backup section below to keep a copy safe.</div>
+    <div class="admin-pane-intro">Manage your password, publishing secret, and backups. Edits publish to the cloud and appear for all visitors instantly.</div>
+
+    ${!hasSecret ? `
+      <div class="item-card" style="border-left:3px solid var(--siren); background:rgba(199,62,62,0.08)">
+        <div class="item-card-header">
+          <div class="item-card-title" style="color:var(--siren)">⚠ Publishing Secret Required</div>
+        </div>
+        <p style="color:var(--cream-dim); font-size:14px; line-height:1.6; margin-bottom:14px">
+          To save changes to the live site, enter the publishing secret your site owner set in Netlify. It's stored in this browser only — you'll only need to enter it once per device.
+        </p>
+        <div class="field">
+          <label>Publishing Secret</label>
+          <input type="password" id="secret-input" placeholder="The ADMIN_SECRET set in Netlify">
+        </div>
+        <button class="btn-primary" id="secret-save" style="width:100%">SAVE SECRET</button>
+      </div>
+    ` : `
+      <div class="item-card" style="border-left:3px solid var(--green); background:rgba(78,168,78,0.05)">
+        <div class="item-card-header">
+          <div class="item-card-title" style="color:var(--green)">✓ Publishing Active</div>
+          <div class="item-card-controls">
+            <button class="icon-btn danger" id="secret-clear" title="Clear publishing secret">×</button>
+          </div>
+        </div>
+        <p style="color:var(--cream-dim); font-size:14px; line-height:1.6">
+          Your edits will save to the cloud and go live for everyone. Clear the secret if signing out of a shared device.
+        </p>
+      </div>
+    `}
 
     ${usingDefault ? `
       <div class="item-card" style="border-left:3px solid var(--siren); background:rgba(199,62,62,0.08)">
@@ -1872,7 +1961,7 @@ function renderAdminSettings() {
         <div class="item-card-title">💾 Backup &amp; Restore Content</div>
       </div>
       <p style="color:var(--cream-dim); font-size:14px; line-height:1.6; margin-bottom:14px">
-        Save a copy of all your content (news, schedule, info, etc.) to a file. You can restore from a backup later, or upload it on another device to copy your edits across.
+        Download a snapshot of all your current content as a JSON file. Useful for archives or restoring after accidental edits.
       </p>
       <div class="field-row">
         <button class="btn-secondary" id="btn-export" style="width:100%">⬇ DOWNLOAD BACKUP</button>
@@ -1886,32 +1975,56 @@ function renderAdminSettings() {
         <div class="item-card-title">Forgot Your Password?</div>
       </div>
       <p style="color:var(--cream-dim); font-size:14px; line-height:1.6">
-        Passwords are hashed, so there's no way to recover the current one. To reset it, clear your browser's site data for this page (or open it in a fresh browser) — that brings back the default password. Then log in and set a new one here.
+        To reset: in your Netlify dashboard, open <strong style="color:var(--cream)">Blobs → mustang-vb → admin-pwd-hash</strong> and delete it. The default password (<code style="background:var(--ink); padding:2px 6px; color:var(--gold); font-family:monospace">mustangs2025</code>) will work again — then set a new one here.
       </p>
     </div>
 
     <div class="item-card">
       <div class="item-card-header">
-        <div class="item-card-title">⚠ How Saving Works</div>
+        <div class="item-card-title">ℹ How Saving Works</div>
       </div>
       <ul style="list-style:none; color:var(--cream-dim); font-size:13px; line-height:1.7">
-        <li style="padding:4px 0; padding-left:14px; position:relative"><span style="position:absolute; left:0; color:var(--gold)">▸</span> Edits save to <strong style="color:var(--cream)">this browser</strong> on this device — they persist if you refresh or close the tab.</li>
-        <li style="padding:4px 0; padding-left:14px; position:relative"><span style="position:absolute; left:0; color:var(--gold)">▸</span> Other visitors see your edits <strong style="color:var(--cream)">only if they're using the same browser on the same device.</strong></li>
-        <li style="padding:4px 0; padding-left:14px; position:relative"><span style="position:absolute; left:0; color:var(--gold)">▸</span> To make edits visible to everyone, download a backup, then have your developer publish it to your hosting (Netlify, etc).</li>
-        <li style="padding:4px 0; padding-left:14px; position:relative"><span style="position:absolute; left:0; color:var(--gold)">▸</span> Clearing browser data will erase your edits — use the backup feature regularly.</li>
+        <li style="padding:4px 0; padding-left:14px; position:relative"><span style="position:absolute; left:0; color:var(--gold)">▸</span> Edits publish to <strong style="color:var(--cream)">Netlify cloud storage</strong> — visible to all visitors on any device.</li>
+        <li style="padding:4px 0; padding-left:14px; position:relative"><span style="position:absolute; left:0; color:var(--gold)">▸</span> The publishing secret is stored in this browser only, so you only enter it once per device.</li>
+        <li style="padding:4px 0; padding-left:14px; position:relative"><span style="position:absolute; left:0; color:var(--gold)">▸</span> Edits auto-save 1.5 seconds after you stop typing, or you can hit the gold <strong style="color:var(--cream)">SAVE CHANGES</strong> button.</li>
       </ul>
     </div>
   `;
 
+  // wire publishing secret
+  if (!hasSecret) {
+    document.getElementById('secret-save').addEventListener('click', async () => {
+      const v = document.getElementById('secret-input').value.trim();
+      if (!v) return;
+      setAdminSecretLocal(v);
+      // try a real save to verify it works
+      const ok = await saveData();
+      if (ok) {
+        showToast('Publishing secret saved — edits will now go live', 'success');
+        renderAdminSettings();
+      } else {
+        clearAdminSecret();
+        // saveData already showed the error toast
+      }
+    });
+    const si = document.getElementById('secret-input');
+    si.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('secret-save').click(); });
+  } else {
+    document.getElementById('secret-clear').addEventListener('click', () => {
+      if (!confirm('Clear publishing secret? You will need to enter it again to save changes.')) return;
+      clearAdminSecret();
+      renderAdminSettings();
+      showToast('Publishing secret cleared', 'success');
+    });
+  }
+
   document.getElementById('pwd-save').addEventListener('click', changePassword);
-  // Allow Enter to submit from any field
   ['pwd-current', 'pwd-new', 'pwd-confirm'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => {
       if (e.key === 'Enter') changePassword();
     });
   });
 
-  // Backup / Restore
   document.getElementById('btn-export').addEventListener('click', exportContent);
   document.getElementById('btn-import').addEventListener('click', () => document.getElementById('file-import').click());
   document.getElementById('file-import').addEventListener('change', importContent);
@@ -1936,21 +2049,20 @@ function importContent(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     try {
       const parsed = JSON.parse(ev.target.result);
       if (!parsed || typeof parsed !== 'object') throw new Error('Not a valid backup file');
-      if (!confirm('Restore content from this file? This will overwrite all current edits.')) {
+      if (!confirm('Restore content from this file? This will overwrite current live content for all visitors.')) {
         e.target.value = '';
         return;
       }
-      // Merge with defaults so missing fields don't break rendering
       DATA = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...parsed };
       DATA.meta = { ...DEFAULTS.meta, ...(parsed.meta || {}) };
       DATA.stats = { ...DEFAULTS.stats, ...(parsed.stats || {}) };
       DATA.practiceMeta = { ...DEFAULTS.practiceMeta, ...(parsed.practiceMeta || {}) };
       DATA.cta = { ...DEFAULTS.cta, ...(parsed.cta || {}) };
-      saveData();
+      await saveData();
       renderAll();
       const active = document.querySelector('.admin-tab.active');
       if (active) renderAdminPane(active.dataset.tab);
@@ -1977,49 +2089,45 @@ async function changePassword() {
     msg.style.color = ok ? 'var(--green)' : 'var(--siren)';
   }
 
-  // Validate
   if (!cur) { setMsg('Enter your current password.', false); return; }
   if (!nw || nw.length < 8) { setMsg('New password must be at least 8 characters.', false); return; }
   if (nw !== cf) { setMsg('New passwords do not match.', false); return; }
   if (nw === cur) { setMsg('New password must be different from current.', false); return; }
+  if (!getAdminSecret()) { setMsg('Set publishing secret first (see top of page).', false); return; }
 
   btn.disabled = true;
   setMsg('Updating…', true);
 
   try {
-    // Verify current password
     if (!(await verifyPassword(cur))) {
       setMsg('Current password is incorrect.', false);
       btn.disabled = false;
       return;
     }
-    // Hash and save the new one
     const newHash = await hashPwd(nw);
-    setStoredPwdHash(newHash);
+    await setStoredPwdHash(newHash);
 
-    // Clear the form
     document.getElementById('pwd-current').value = '';
     document.getElementById('pwd-new').value = '';
     document.getElementById('pwd-confirm').value = '';
     setMsg('Password updated successfully.', true);
     showToast('Password changed — keep it safe!', 'success');
 
-    // Re-render to remove the "default password" warning if present
     setTimeout(() => renderAdminSettings(), 1500);
   } catch (e) {
     console.error(e);
-    setMsg('Something went wrong — try again.', false);
+    if (e.code === 'BAD_SECRET') setMsg('Publishing secret is incorrect — check Settings.', false);
+    else setMsg('Something went wrong — try again.', false);
     btn.disabled = false;
   }
 }
 
 // ─────────── RESET TO DEFAULTS ───────────
-function resetAllContent() {
-  if (!confirm('Reset ALL content to the original defaults? This cannot be undone.')) return;
+async function resetAllContent() {
+  if (!confirm('Reset ALL content to the original defaults? This will affect all visitors.')) return;
   DATA = JSON.parse(JSON.stringify(DEFAULTS));
-  saveData();
+  await saveData();
   renderAll();
-  // re-render currently active admin pane
   const active = document.querySelector('.admin-tab.active');
   if (active) renderAdminPane(active.dataset.tab);
   showToast('Content reset to defaults', 'success');
@@ -2037,9 +2145,13 @@ function showToast(msg, type) {
 
 // ─────────── INIT ───────────
 function init() {
-  loadData();
+  // 1) Show cached content immediately (fast load, works offline)
+  loadDataFromCache();
   renderAll();
   setupScheduleTabs();
+
+  // 2) Then fetch latest from cloud in the background and update if changed
+  loadDataFromCloud();
 
   // wire global UI
   document.getElementById('reelPrev').addEventListener('click', () => { goReel(reelPage - 1); resetReelAuto(); });
