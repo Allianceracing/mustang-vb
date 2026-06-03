@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mustang Girls Volleyball — J.W. Mitchell High School</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230A0A0A'/%3E%3Ccircle cx='50' cy='50' r='42' fill='none' stroke='%23B89456' stroke-width='5'/%3E%3Cpath d='M 50 8 Q 28 50 50 92' fill='none' stroke='%23B89456' stroke-width='4'/%3E%3Cpath d='M 50 8 Q 72 50 50 92' fill='none' stroke='%23B89456' stroke-width='4'/%3E%3Cpath d='M 8 50 Q 50 28 92 50' fill='none' stroke='%23B89456' stroke-width='4'/%3E%3Cpath d='M 8 50 Q 50 72 92 50' fill='none' stroke='%23B89456' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@300;400;500;600;700;800;900&family=Barlow+Condensed:wght@400;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -211,12 +212,40 @@ section { padding: 100px 40px; position: relative; }
 .sched-list { display: flex; flex-direction: column; gap: 2px; }
 .game-row {
   background: var(--ink-soft); border-left: 3px solid var(--ink-line);
-  padding: 24px 32px; display: grid;
+  padding: 24px 32px; transition: all 0.2s;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.game-main-row {
+  display: grid;
   grid-template-columns: 90px 90px 1fr auto auto;
-  gap: 30px; align-items: center; transition: all 0.2s;
+  gap: 30px; align-items: center;
 }
 .game-row:hover { border-left-color: var(--gold); background: var(--ink-line); transform: translateX(4px); }
 .game-row.next { border-left-color: var(--gold); background: linear-gradient(90deg, rgba(184,148,86,0.10) 0%, var(--ink-soft) 30%); }
+.travel-info {
+  border-top: 1px dashed var(--ink-line-2, #2a2722);
+  padding-top: 14px;
+  display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center;
+}
+.travel-address {
+  color: var(--gold); text-decoration: none;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px; letter-spacing: 0.08em; font-weight: 700;
+  transition: color 0.2s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.travel-address:hover { color: var(--gold-bright); text-decoration: underline; }
+.travel-address .map-arrow { font-size: 11px; opacity: 0.7; }
+.travel-times { display: flex; gap: 22px; flex-wrap: wrap; margin-left: auto; }
+.travel-arrive { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.travel-arrive .lbl {
+  font-family: 'Barlow Condensed', sans-serif;
+  color: var(--cream-dim); font-size: 10px; letter-spacing: 0.2em; font-weight: 700;
+}
+.travel-arrive .val {
+  font-family: 'Anton', sans-serif; color: var(--cream);
+  font-size: 18px; letter-spacing: 0.02em;
+}
 .game-date { text-align: center; border-right: 1px solid var(--ink-line); padding-right: 20px; }
 .game-date .day { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; letter-spacing: 0.2em; color: var(--gold); font-weight: 700; }
 .game-date .num { font-family: 'Anton', sans-serif; font-size: 44px; line-height: 1; color: var(--cream); }
@@ -273,6 +302,124 @@ section { padding: 100px 40px; position: relative; }
 .coach-info .role { font-family: 'Barlow Condensed', sans-serif; color: var(--gold); font-size: 11px; letter-spacing: 0.2em; font-weight: 700; }
 .coach-info .contact { color: var(--cream-dim); font-size: 12px; margin-top: 2px; }
 .coach-divider { height: 1px; background: var(--ink-line); }
+
+/* ─────────── MUSTANG ALUMNI / HALL OF FAME ─────────── */
+.alumni-section {
+  background: linear-gradient(180deg, #0a0a0a 0%, #141413 100%);
+  border-top: 1px solid var(--ink-line);
+  position: relative;
+  overflow: hidden;
+}
+.alumni-bg-decor {
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  transform: translateY(-50%) rotate(-3deg);
+  display: flex; gap: 80px;
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(120px, 18vw, 240px);
+  color: var(--gold);
+  opacity: 0.03;
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+  letter-spacing: 0.02em;
+  z-index: 0;
+}
+.alumni-section .section-head { position: relative; z-index: 2; }
+.alumni-intro {
+  max-width: 1400px; margin: 0 auto 50px;
+  color: var(--cream-dim);
+  font-size: 16px; line-height: 1.6;
+  max-width: 720px;
+  text-align: center;
+  position: relative; z-index: 2;
+  border-bottom: 1px solid var(--ink-line);
+  padding-bottom: 32px;
+}
+.alumni-list {
+  max-width: 1400px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 28px;
+  position: relative; z-index: 2;
+}
+.alum-card {
+  background: linear-gradient(160deg, #1a1815 0%, #0e0d0b 100%);
+  border: 1px solid var(--ink-line);
+  padding: 0;
+  position: relative;
+  transition: all 0.3s;
+  overflow: hidden;
+  display: flex; align-items: stretch;
+  min-height: 160px;
+}
+.alum-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%);
+  opacity: 0.5;
+}
+.alum-card::after {
+  content: ''; position: absolute;
+  bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%);
+  opacity: 0.5;
+}
+.alum-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-4px);
+  box-shadow: 0 24px 48px -16px rgba(184, 148, 86, 0.25);
+}
+.alum-card:hover::before, .alum-card:hover::after { opacity: 1; }
+.alum-rank-bar {
+  width: 6px; background: var(--gold);
+  flex-shrink: 0;
+  position: relative;
+}
+.alum-rank-bar::before, .alum-rank-bar::after {
+  content: ''; position: absolute;
+  left: -3px; right: -3px; height: 6px;
+  background: var(--gold);
+}
+.alum-rank-bar::before { top: 0; }
+.alum-rank-bar::after { bottom: 0; }
+.alum-body {
+  padding: 28px 32px;
+  flex: 1;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.alum-name {
+  font-family: 'Anton', sans-serif;
+  font-size: 30px; letter-spacing: 0.02em;
+  color: var(--cream); text-transform: uppercase;
+  line-height: 1.05;
+  margin-bottom: 10px;
+}
+.alum-meta {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  margin-bottom: 12px;
+}
+.alum-pos {
+  font-family: 'Barlow Condensed', sans-serif;
+  background: var(--ink); color: var(--cream-dim);
+  padding: 3px 12px;
+  font-size: 11px; letter-spacing: 0.2em; font-weight: 700;
+  text-transform: uppercase;
+  border: 1px solid var(--ink-line);
+}
+.alum-year {
+  font-family: 'Barlow Condensed', sans-serif;
+  color: var(--gold); font-size: 11px;
+  letter-spacing: 0.22em; font-weight: 700;
+  display: flex; align-items: center;
+}
+.alum-college {
+  font-family: 'DM Serif Display', serif;
+  color: var(--gold-bright);
+  font-size: 22px;
+  font-style: italic;
+  margin-top: 4px;
+  line-height: 1.2;
+}
 
 /* ─────────── RESOURCES / QUICK LINKS ─────────── */
 .resources-section {
@@ -535,6 +682,24 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
   font-weight: 800; text-transform: uppercase;
 }
 .item-card-controls { display: flex; gap: 6px; }
+.travel-fields-block {
+  margin-top: 18px; padding: 16px;
+  background: rgba(184, 148, 86, 0.06);
+  border: 1px dashed var(--gold);
+  border-radius: 2px;
+}
+.travel-fields-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  color: var(--gold); font-size: 12px; letter-spacing: 0.18em;
+  font-weight: 800; text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.travel-fields-hint {
+  color: var(--cream-dim); font-weight: 600;
+  letter-spacing: 0.05em; font-size: 10px;
+  text-transform: none;
+  margin-left: 6px;
+}
 .icon-btn {
   background: transparent; border: 1px solid var(--ink-line-2);
   color: var(--cream-dim); width: 30px; height: 30px;
@@ -660,9 +825,13 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
   .section-head { flex-direction: column; align-items: start; gap: 16px; }
   .section-head .tail { text-align: left; }
   .news-card { flex: 0 0 calc(85% - 12px); }
-  .game-row { grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px; }
-  .game-row > * { grid-column: span 1; }
-  .game-vs { grid-column: span 2; border-top: 1px solid var(--ink-line); padding-top: 16px; }
+  .game-row { padding: 18px; gap: 14px; }
+  .game-main-row { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .game-main-row > * { grid-column: span 1; }
+  .game-vs { grid-column: span 2; border-top: 1px solid var(--ink-line); padding-top: 14px; }
+  .travel-info { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .travel-times { margin-left: 0; gap: 18px; }
+  .travel-arrive { align-items: flex-start; }
   .info-grid { grid-template-columns: 1fr; }
   .info-main { grid-template-columns: 1fr; }
   .pr-meta { grid-template-columns: 1fr; gap: 16px; }
@@ -685,6 +854,10 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
   .save-all-btn { padding: 16px 20px; }
   .resources-grid { grid-template-columns: 1fr; }
   .resource-card { min-height: auto; padding: 28px 22px; }
+  .alumni-list { grid-template-columns: 1fr; gap: 16px; }
+  .alum-name { font-size: 24px; }
+  .alum-college { font-size: 18px; }
+  .alum-body { padding: 22px 24px; }
 }
 </style>
 </head>
@@ -716,6 +889,7 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
     <a href="#schedule">Schedule</a>
     <a href="#news">News</a>
     <a href="#info">Info</a>
+    <a href="#alumniSection">Alumni</a>
     <a href="#resources">Links</a>
     <a href="#" class="nav-cta">Join the Team</a>
   </div>
@@ -810,11 +984,29 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
   </div>
 </section>
 
+<!-- ── MUSTANG ALUMNI / HALL OF FAME ── -->
+<section class="alumni-section" id="alumniSection">
+  <div class="alumni-bg-decor">
+    <span>HALL OF FAME</span><span>HALL OF FAME</span><span>HALL OF FAME</span>
+  </div>
+  <div class="section-head">
+    <div>
+      <div class="num">[ 04 / WHERE THEY WENT ]</div>
+      <h2>Mustang <em>alumni</em></h2>
+    </div>
+    <div class="tail">PLAYING AT THE NEXT LEVEL</div>
+  </div>
+  <div class="alumni-intro">
+    Mustang Volleyball players who took the next step. Once a Mustang, always a Mustang.
+  </div>
+  <div class="alumni-list" id="alumniList"></div>
+</section>
+
 <!-- ── RESOURCES / QUICK LINKS ── -->
 <section class="resources-section" id="resources">
   <div class="section-head">
     <div>
-      <div class="num">[ 04 / RESOURCES ]</div>
+      <div class="num">[ 05 / RESOURCES ]</div>
       <h2>Quick <em>links</em></h2>
     </div>
     <div class="tail">PLAYERS · PARENTS · FANS</div>
@@ -939,6 +1131,7 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
     <button class="admin-tab" data-tab="practice">Practice</button>
     <button class="admin-tab" data-tab="info">Info</button>
     <button class="admin-tab" data-tab="coaches">Coaches</button>
+    <button class="admin-tab" data-tab="alumni">🏆 Alumni</button>
     <button class="admin-tab" data-tab="hero">Hero / Stats</button>
     <button class="admin-tab" data-tab="cta">Banner CTA</button>
     <button class="admin-tab" data-tab="settings">⚙ Settings</button>
@@ -952,6 +1145,7 @@ footer { background: var(--ink); border-top: 2px solid var(--gold); padding: 60p
     <div class="admin-pane" id="pane-admin-practice"></div>
     <div class="admin-pane" id="pane-admin-info"></div>
     <div class="admin-pane" id="pane-admin-coaches"></div>
+    <div class="admin-pane" id="pane-admin-alumni"></div>
     <div class="admin-pane" id="pane-admin-cta"></div>
     <div class="admin-pane" id="pane-admin-settings"></div>
   </div>
@@ -1119,7 +1313,8 @@ const DEFAULTS = {
     body: 'Join the Mustang Volleyball Booster Club — support the program, get the gear, ride the bus to away games. Every Mustang matters.',
     buttonText: 'Get Involved →',
     buttonUrl: '#'
-  }
+  },
+  alumni: []
 };
 
 // ─────────── STATE ───────────
@@ -1135,6 +1330,7 @@ function applyParsed(parsed) {
   DATA.stats = { ...DEFAULTS.stats, ...(parsed.stats || {}) };
   DATA.practiceMeta = { ...DEFAULTS.practiceMeta, ...(parsed.practiceMeta || {}) };
   DATA.cta = { ...DEFAULTS.cta, ...(parsed.cta || {}) };
+  if (!Array.isArray(DATA.alumni)) DATA.alumni = [];
 }
 
 // Synchronous: instantly load from local cache so the page renders fast
@@ -1261,15 +1457,35 @@ function renderGames() {
   document.getElementById('gameCount').textContent = DATA.games.length;
   const wrap = document.getElementById('gameList');
   if (!wrap) return;
-  wrap.innerHTML = DATA.games.map(g => `
-    <div class="game-row${g.status === 'next' ? ' next' : ''}">
-      <div class="game-date"><div class="day">${esc(g.day)}</div><div class="num">${esc(g.num)}</div><div class="mo">${esc(g.mo)}</div></div>
-      <div class="game-time">${esc(g.time)}<span class="ampm">${esc(g.ampm)}</span></div>
-      <div class="game-vs"><div class="vs-lbl">${esc(g.vsLabel)}</div><div class="opp">${esc(g.opp)}</div><div class="loc">${esc(g.loc)}</div></div>
-      <div class="game-type ${esc(g.type)}">${g.type === 'home' ? 'HOME' : g.type === 'away' ? 'AWAY' : g.type === 'tourney' ? 'TOURNEY' : 'PLAYOFF'}</div>
-      <div class="game-result ${esc(g.status)}">${esc(g.result)}<span class="score">${esc(g.score)}</span></div>
+  wrap.innerHTML = DATA.games.map(g => {
+    const isAway = g.type === 'away';
+    const hasTravelInfo = isAway && (g.address || g.arriveJV || g.arriveVarsity);
+    let travelRow = '';
+    if (hasTravelInfo) {
+      const mapsLink = g.address
+        ? `<a class="travel-address" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.address)}" target="_blank" rel="noopener" title="Open in Google Maps">📍 ${esc(g.address)} <span class="map-arrow">↗</span></a>`
+        : '';
+      const arriveJV = g.arriveJV ? `<div class="travel-arrive"><span class="lbl">JV ARRIVE</span><span class="val">${esc(g.arriveJV)}</span></div>` : '';
+      const arriveVar = g.arriveVarsity ? `<div class="travel-arrive"><span class="lbl">VARSITY ARRIVE</span><span class="val">${esc(g.arriveVarsity)}</span></div>` : '';
+      travelRow = `
+        <div class="travel-info">
+          ${mapsLink}
+          <div class="travel-times">${arriveJV}${arriveVar}</div>
+        </div>`;
+    }
+    return `
+    <div class="game-row${g.status === 'next' ? ' next' : ''}${hasTravelInfo ? ' has-travel' : ''}">
+      <div class="game-main-row">
+        <div class="game-date"><div class="day">${esc(g.day)}</div><div class="num">${esc(g.num)}</div><div class="mo">${esc(g.mo)}</div></div>
+        <div class="game-time">${esc(g.time)}<span class="ampm">${esc(g.ampm)}</span></div>
+        <div class="game-vs"><div class="vs-lbl">${esc(g.vsLabel)}</div><div class="opp">${esc(g.opp)}</div><div class="loc">${esc(g.loc)}</div></div>
+        <div class="game-type ${esc(g.type)}">${g.type === 'home' ? 'HOME' : g.type === 'away' ? 'AWAY' : g.type === 'tourney' ? 'TOURNEY' : 'PLAYOFF'}</div>
+        <div class="game-result ${esc(g.status)}">${esc(g.result)}<span class="score">${esc(g.score)}</span></div>
+      </div>
+      ${travelRow}
     </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function renderPractice() {
@@ -1330,6 +1546,32 @@ function renderCTA() {
   }
 }
 
+function renderAlumni() {
+  const section = document.getElementById('alumniSection');
+  const wrap = document.getElementById('alumniList');
+  if (!section || !wrap) return;
+  const list = DATA.alumni || [];
+  // Hide the whole section when empty so the public site stays clean
+  if (list.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  wrap.innerHTML = list.map(a => `
+    <article class="alum-card">
+      <div class="alum-rank-bar"></div>
+      <div class="alum-body">
+        <div class="alum-name">${esc(a.name || '—')}</div>
+        <div class="alum-meta">
+          ${a.position ? `<span class="alum-pos">${esc(a.position)}</span>` : ''}
+          ${a.year ? `<span class="alum-year">CLASS OF ${esc(a.year)}</span>` : ''}
+        </div>
+        ${a.college ? `<div class="alum-college">${esc(a.college)}</div>` : ''}
+      </div>
+    </article>
+  `).join('');
+}
+
 function renderAll() {
   renderTicker();
   renderHero();
@@ -1338,6 +1580,7 @@ function renderAll() {
   renderPractice();
   renderInfo();
   renderCoaches();
+  renderAlumni();
   renderCTA();
 }
 
@@ -1467,6 +1710,7 @@ function renderAdminPane(name) {
   else if (name === 'practice') renderAdminPractice();
   else if (name === 'info') renderAdminInfo();
   else if (name === 'coaches') renderAdminCoaches();
+  else if (name === 'alumni') renderAdminAlumni();
   else if (name === 'cta') renderAdminCTA();
   else if (name === 'settings') renderAdminSettings();
 }
@@ -1604,7 +1848,22 @@ function renderAdminGames() {
 }
 function rebuildGamesList() {
   const list = document.getElementById('gamesList');
-  list.innerHTML = DATA.games.map((g, i) => `
+  list.innerHTML = DATA.games.map((g, i) => {
+    const isAway = g.type === 'away';
+    const travelFields = isAway ? `
+      <div class="travel-fields-block">
+        <div class="travel-fields-title">🚌 Away Game Travel Info <span class="travel-fields-hint">(only shown for away games)</span></div>
+        <div class="field">
+          <label>Full Address (becomes a Google Maps link)</label>
+          <input data-i="${i}" data-k="address" placeholder="e.g. 12345 Main St, Tampa, FL 33602" value="${esc(g.address || '')}">
+        </div>
+        <div class="field-row">
+          <div><label>JV Arrival Time</label><input data-i="${i}" data-k="arriveJV" placeholder="e.g. 4:00 PM" value="${esc(g.arriveJV || '')}"></div>
+          <div><label>Varsity Arrival Time</label><input data-i="${i}" data-k="arriveVarsity" placeholder="e.g. 5:30 PM" value="${esc(g.arriveVarsity || '')}"></div>
+        </div>
+      </div>
+    ` : '';
+    return `
     <div class="item-card">
       <div class="item-card-header">
         <div class="item-card-title">Game #${i + 1} — ${esc(g.opp)}</div>
@@ -1627,7 +1886,7 @@ function rebuildGamesList() {
         <div><label>Opponent / Event</label><input data-i="${i}" data-k="opp" value="${esc(g.opp)}"></div>
         <div><label>VS Label (VS, @, SENIOR NIGHT…)</label><input data-i="${i}" data-k="vsLabel" value="${esc(g.vsLabel)}"></div>
       </div>
-      <div class="field"><label>Location</label><input data-i="${i}" data-k="loc" value="${esc(g.loc)}"></div>
+      <div class="field"><label>Location (short name)</label><input data-i="${i}" data-k="loc" value="${esc(g.loc)}"></div>
       <div class="field-row">
         <div><label>Type</label>
           <select data-i="${i}" data-k="type">
@@ -1649,8 +1908,10 @@ function rebuildGamesList() {
         <div><label>Result (W, L, 1st, NEXT, —)</label><input data-i="${i}" data-k="result" value="${esc(g.result)}"></div>
         <div><label>Score / Sub-text</label><input data-i="${i}" data-k="score" value="${esc(g.score)}"></div>
       </div>
+      ${travelFields}
     </div>
-  `).join('');
+    `;
+  }).join('');
   list.querySelectorAll('input, select, textarea').forEach(inp => {
     inp.addEventListener('input', () => {
       DATA.games[+inp.dataset.i][inp.dataset.k] = inp.value;
@@ -1659,6 +1920,8 @@ function rebuildGamesList() {
     inp.addEventListener('change', () => {
       DATA.games[+inp.dataset.i][inp.dataset.k] = inp.value;
       renderGames(); markDirty();
+      // If they changed the type to/from "away", rebuild so travel fields appear/disappear
+      if (inp.dataset.k === 'type') rebuildGamesList();
     });
   });
 }
@@ -1850,6 +2113,60 @@ function moveCoach(i, dir) {
   const j = i + dir; if (j < 0 || j >= DATA.coaches.length) return;
   [DATA.coaches[i], DATA.coaches[j]] = [DATA.coaches[j], DATA.coaches[i]];
   renderCoaches(); rebuildCoachList(); markDirty();
+}
+
+// ─────────── ADMIN PANE: ALUMNI / HALL OF FAME ───────────
+function renderAdminAlumni() {
+  const pane = document.getElementById('pane-admin-alumni');
+  if (!Array.isArray(DATA.alumni)) DATA.alumni = [];
+  pane.innerHTML = `
+    <div class="admin-pane-intro">Mustang Alumni section — former Mitchell players continuing to play in college. Each entry shows on the public site as a Hall of Fame card. <strong>The whole section stays hidden until you add the first player.</strong></div>
+    <div id="alumniAdminList"></div>
+    <button class="add-btn" onclick="addAlum()">+ Add Alumni Player</button>
+  `;
+  rebuildAlumniList();
+}
+function rebuildAlumniList() {
+  const list = document.getElementById('alumniAdminList');
+  list.innerHTML = DATA.alumni.map((a, i) => `
+    <div class="item-card">
+      <div class="item-card-header">
+        <div class="item-card-title">Alumni #${i + 1} — ${esc(a.name || 'Unnamed')}</div>
+        <div class="item-card-controls">
+          <button class="icon-btn" title="Move up" onclick="moveAlum(${i}, -1)">↑</button>
+          <button class="icon-btn" title="Move down" onclick="moveAlum(${i}, 1)">↓</button>
+          <button class="icon-btn danger" title="Delete" onclick="delAlum(${i})">×</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div><label>Player Name</label><input data-i="${i}" data-k="name" value="${esc(a.name || '')}" placeholder="First Last"></div>
+        <div><label>Position</label><input data-i="${i}" data-k="position" value="${esc(a.position || '')}" placeholder="Outside Hitter, Libero, etc."></div>
+      </div>
+      <div class="field-row">
+        <div><label>College / University</label><input data-i="${i}" data-k="college" value="${esc(a.college || '')}" placeholder="e.g. University of Florida"></div>
+        <div><label>HS Class Year</label><input data-i="${i}" data-k="year" value="${esc(a.year || '')}" placeholder="e.g. 2024"></div>
+      </div>
+    </div>
+  `).join('');
+  list.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      DATA.alumni[+inp.dataset.i][inp.dataset.k] = inp.value;
+      renderAlumni(); markDirty();
+    });
+  });
+}
+function addAlum() {
+  DATA.alumni.push({ name: '', position: '', college: '', year: '' });
+  renderAlumni(); rebuildAlumniList(); markDirty();
+}
+function delAlum(i) {
+  if (!confirm('Remove this alumni player?')) return;
+  DATA.alumni.splice(i, 1); renderAlumni(); rebuildAlumniList(); markDirty();
+}
+function moveAlum(i, dir) {
+  const j = i + dir; if (j < 0 || j >= DATA.alumni.length) return;
+  [DATA.alumni[i], DATA.alumni[j]] = [DATA.alumni[j], DATA.alumni[i]];
+  renderAlumni(); rebuildAlumniList(); markDirty();
 }
 
 // ─────────── ADMIN PANE: CTA / RIDE WITH THE HERD ───────────
